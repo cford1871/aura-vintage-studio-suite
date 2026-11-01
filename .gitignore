@@ -1,0 +1,6 @@
+# Build artifacts & macOS metadata
+.DS_Store
+*.o
+*.dSYM
+build/
+*.png
