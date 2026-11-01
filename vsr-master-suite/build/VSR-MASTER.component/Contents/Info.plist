@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>English</string>
+    <key>CFBundleExecutable</key>
+    <string>VSR-MASTER</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.beatskillz.vsrmaster.au</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>CFBundleName</key>
+    <string>VSR-MASTER</string>
+    <key>CFBundleDisplayName</key>
+    <string>VSR-MASTER Console</string>
+    <key>CFBundlePackageType</key>
+    <string>BNDL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.2.0</string>
+    <key>CFBundleVersion</key>
+    <string>1.2.0</string>
+    <key>CFBundleSignature</key>
+    <string>????</string>
+    <key>NSHighResolutionCapable</key>
+    <true/>
+    <key>AudioComponents</key>
+    <array>
+        <dict>
+            <key>name</key>
+            <string>Vintage Studio DSP: VSR-MASTER Console</string>
+            <key>description</key>
+            <string>VSR-MASTER Ozone 12 + Soothe3 + Tape56K Master &amp; Mix Effects Processor</string>
+            <key>factoryFunction</key>
+            <string>VSRMasterAUFactory</string>
+            <key>manufacturer</key>
+            <string>BSKZ</string>
+            <key>subtype</key>
+            <string>VMSR</string>
+            <key>type</key>
+            <string>aufx</string>
+            <key>version</key>
+            <integer>66048</integer>
+            <key>sandboxSafe</key>
+            <true/>
+            <key>tags</key>
+            <array>
+                <string>Effects</string>
+                <string>Mastering</string>
+                <string>Dynamics</string>
+                <string>Equalizer</string>
+            </array>
+        </dict>
+    </array>
+</dict>
+</plist>

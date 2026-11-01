@@ -1,6 +1,4 @@
-# Build artifacts & macOS metadata
+# macOS metadata & temporary object files
 .DS_Store
 *.o
 *.dSYM
-build/
-*.png
