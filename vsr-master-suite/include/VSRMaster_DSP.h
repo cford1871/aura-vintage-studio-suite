@@ -63,13 +63,13 @@ struct ParamMeta {
 };
 
 static const ParamMeta kParamTable[kNumParams] = {
-    {"IN GAIN",       "dB",  -12.0f,  12.0f,   1.5f, false},
+    {"IN GAIN",       "dB",  -12.0f,  12.0f,   0.0f, false},
     {"TAPE56K DRV",   "%",     0.0f, 100.0f,  38.0f, false},
     {"HEAD BUMP",     "%",     0.0f, 100.0f,  32.0f, false},
     {"UNLIMITER",     "%",     0.0f, 100.0f,  26.0f, false},
     {"TAPE MODEL",    "",      0.0f,   2.0f,   0.0f, false},
     {"GAIN LINK",     "",      0.0f,   1.0f,   1.0f, true},
-    {"DSP56K 24B",    "",      0.0f,   1.0f,   1.0f, true},
+    {"DSP56K 24B",    "",      0.0f,   1.0f,   0.0f, true},
 
     {"SOOTHE DEPTH",  "%",     0.0f, 100.0f,  46.0f, false},
     {"DETAIL / Q",    "%",     0.0f, 100.0f,  64.0f, false},
@@ -138,7 +138,7 @@ struct Biquad {
     }
 
     void setBandpass(double fs, double fc, double Q) {
-        fc = std::max(40.0, std::min(fs * 0.45, fc));
+        fc = std::max(30.0, std::min(fs * 0.45, fc));
         double w0 = 2.0 * M_PI * fc / fs;
         double alpha = std::sin(w0) / (2.0 * std::max(0.3, Q));
         double a0 = 1.0 + alpha;
@@ -171,35 +171,35 @@ struct PresetBank {
 
 static const PresetBank kPresets[8] = {
     {"01. Ozone12 + Soothe3 + Tape56K Master", "O12+STH3+56K",
-     {1.5f, 38.0f, 32.0f, 26.0f, 0.0f, 1.0f, 1.0f,  46.0f, 64.0f, -6.5f, 18.0f, 0.0f, 0.0f,
+     {0.0f, 38.0f, 32.0f, 26.0f, 0.0f, 1.0f, 0.0f,  46.0f, 64.0f, -6.5f, 18.0f, 0.0f, 0.0f,
       54.0f, 68.0f, 42.0f, 48.0f, 1.0f, 1.0f,      -14.5f, 2.5f, 36.0f, 122.0f, 110.0f, 1.0f, 1.0f,
       4.6f, -0.1f, 28.0f, 100.0f, 1.0f, 1.0f}},
     {"02. Tape56K Lyrec TR-533 Warm Glue", "TAPE56K GLUE",
-     {3.0f, 68.0f, 58.0f, 15.0f, 0.0f, 1.0f, 1.0f,  28.0f, 50.0f, -4.0f, -10.0f, 0.0f, 0.0f,
+     {1.5f, 68.0f, 58.0f, 15.0f, 0.0f, 1.0f, 0.0f,  28.0f, 50.0f, -4.0f, -10.0f, 0.0f, 0.0f,
       62.0f, 75.0f, 30.0f, 32.0f, 1.0f, 0.0f,      -16.0f, 3.0f, 42.0f, 112.0f, 120.0f, 1.0f, 1.0f,
       3.8f, -0.2f, 22.0f, 100.0f, 1.0f, 1.0f}},
     {"03. Soothe3 Harshness & Mud Tamer", "SOOTHE3 TAME",
-     {0.5f, 20.0f, 18.0f, 12.0f, 1.0f, 1.0f, 0.0f,  76.0f, 82.0f, -11.0f, 35.0f, 1.0f, 0.0f,
+     {0.0f, 20.0f, 18.0f, 12.0f, 1.0f, 1.0f, 0.0f,  76.0f, 82.0f, -11.0f, 35.0f, 1.0f, 0.0f,
       40.0f, 52.0f, 64.0f, 58.0f, 1.0f, 1.0f,      -12.0f, 2.0f, 25.0f, 116.0f, 95.0f, 0.0f, 1.0f,
       3.2f, -0.1f, 18.0f, 100.0f, 1.0f, 1.0f}},
     {"04. Ozone12 Hip-Hop 808 Bass Control", "808 BASS CTRL",
-     {2.2f, 45.0f, 64.0f, 34.0f, 0.0f, 1.0f, 1.0f,  42.0f, 60.0f, -5.5f, 10.0f, 0.0f, 0.0f,
+     {1.0f, 45.0f, 64.0f, 34.0f, 0.0f, 1.0f, 0.0f,  42.0f, 60.0f, -5.5f, 10.0f, 0.0f, 0.0f,
       84.0f, 88.0f, 48.0f, 52.0f, 1.0f, 1.0f,      -16.5f, 3.5f, 64.0f, 128.0f, 135.0f, 1.0f, 1.0f,
       5.8f, -0.1f, 35.0f, 100.0f, 1.0f, 1.0f}},
     {"05. Unlimiter + Impact Punch Restorer", "UNLIMIT PUNCH",
-     {1.0f, 28.0f, 30.0f, 78.0f, 1.0f, 1.0f, 0.0f,  35.0f, 55.0f, -4.5f, 0.0f, 0.0f, 0.0f,
+     {0.5f, 28.0f, 30.0f, 78.0f, 1.0f, 1.0f, 0.0f,  35.0f, 55.0f, -4.5f, 0.0f, 0.0f, 0.0f,
       72.0f, 54.0f, 38.0f, 44.0f, 1.0f, 1.0f,      -11.0f, 1.8f, 82.0f, 118.0f, 100.0f, 1.0f, 1.0f,
       3.4f, -0.2f, 48.0f, 100.0f, 0.0f, 1.0f}},
     {"06. Clarity & Imager Wide Pop Air", "CLARITY WIDE",
-     {0.8f, 24.0f, 22.0f, 20.0f, 1.0f, 1.0f, 0.0f,  52.0f, 70.0f, -6.0f, 42.0f, 0.0f, 0.0f,
+     {0.5f, 24.0f, 22.0f, 20.0f, 1.0f, 1.0f, 0.0f,  52.0f, 70.0f, -6.0f, 42.0f, 0.0f, 0.0f,
       48.0f, 60.0f, 72.0f, 85.0f, 1.0f, 1.0f,      -13.5f, 2.2f, 45.0f, 152.0f, 90.0f, 1.0f, 1.0f,
       5.0f, -0.1f, 32.0f, 100.0f, 1.0f, 1.0f}},
     {"07. Vintage S950 + DSP56K Lo-Fi Bus", "S950+DSP56K",
-     {3.5f, 74.0f, 70.0f, 40.0f, 2.0f, 1.0f, 1.0f,  38.0f, 48.0f, -5.0f, -25.0f, 0.0f, 0.0f,
+     {2.0f, 74.0f, 70.0f, 40.0f, 2.0f, 1.0f, 1.0f,  38.0f, 48.0f, -5.0f, -25.0f, 0.0f, 0.0f,
       78.0f, 80.0f, 35.0f, 28.0f, 1.0f, 0.0f,      -18.0f, 4.0f, 58.0f, 95.0f, 150.0f, 0.0f, 0.0f,
       5.2f, -0.1f, 40.0f, 100.0f, 1.0f, 1.0f}},
     {"08. IRC IV Streaming Master (-9 LUFS)", "IRC IV MASTER",
-     {1.2f, 30.0f, 25.0f, 22.0f, 0.0f, 1.0f, 1.0f,  50.0f, 68.0f, -7.0f, 15.0f, 0.0f, 0.0f,
+     {0.8f, 30.0f, 25.0f, 22.0f, 0.0f, 1.0f, 0.0f,  50.0f, 68.0f, -7.0f, 15.0f, 0.0f, 0.0f,
       58.0f, 64.0f, 55.0f, 60.0f, 1.0f, 1.0f,      -15.0f, 2.4f, 40.0f, 126.0f, 105.0f, 1.0f, 1.0f,
       6.4f, -0.1f, 30.0f, 100.0f, 1.0f, 1.0f}}
 };
@@ -211,6 +211,8 @@ class VSRMasterEngine {
 public:
     static constexpr int kScopeSize = 256;
     static constexpr int kSootheBands = 6;
+    static constexpr int kSpecBands = 32;
+    static constexpr int kWaterfallRows = 44;
 
     VSRMasterEngine() {
         for (int i = 0; i < kNumParams; ++i) {
@@ -218,9 +220,12 @@ public:
         }
         sootheAttenDB_.fill(0.0f);
         grHistory_.fill(0.0f);
+        wavePeakHist_.fill(0.0f);
+        waveRmsHist_.fill(0.0f);
         vecX_.fill(0.0f);
         vecY_.fill(0.0f);
-        fftMag_.fill(0.25f);
+        specMag_.fill(0.0f);
+        for (auto& row : waterfall_) row.fill(0.0f);
         prepare(48000.0);
     }
 
@@ -234,6 +239,13 @@ public:
             sootheDetect_[b].reset();
             sootheNotch_[b].reset();
             sootheEnv_[b] = 0.0;
+        }
+        for (int b = 0; b < kSpecBands; ++b) {
+            double norm = (double)b / (kSpecBands - 1);
+            double fc = 25.0 * std::pow(750.0, norm);
+            specFilters_[b].reset();
+            specFilters_[b].setBandpass(sampleRate_, fc, 2.2);
+            specEnv_[b] = 0.0;
         }
         compEnv_ = 0.0;
         fastTransEnv_ = 0.0;
@@ -317,6 +329,7 @@ public:
     }
 
     void processBlock(const float* inL, const float* inR, float* outL, float* outR, int numFrames) {
+        if (numFrames <= 0) return;
         updateFilters();
 
         float inGainDB = getParameterValue(kInGain);
@@ -354,50 +367,47 @@ public:
         static const double kResFreqs[kSootheBands] = {240.0, 580.0, 1450.0, 3100.0, 5600.0, 9800.0};
 
         float peakIn = 0.0f, peakOut = 0.0f;
+        double sumSqOut = 0.0;
         float maxGR = 0.0f;
         double corrNum = 0.0, corrDenL = 0.0, corrDenR = 0.0;
+        bool demoOn = demoLoopPlaying_.load(std::memory_order_relaxed);
 
         for (int i = 0; i < numFrames; ++i) {
             float dryL = inL ? inL[i] : 0.0f;
             float dryR = inR ? inR[i] : dryL;
 
-            // Built-in studio mastering loop generator if host input is silent and demo is active
-            if (demoLoopPlaying_.load(std::memory_order_relaxed) && std::fabs(dryL) < 1e-5f && std::fabs(dryR) < 1e-5f) {
-                double t = demoPhase_ / sampleRate_;
-                double beat = std::fmod(t * 2.1, 4.0);
-                double kickEnv = std::exp(-std::fmod(beat, 1.0) * 11.0);
-                double kickFreq = 48.0 + 95.0 * std::exp(-std::fmod(beat, 1.0) * 38.0);
-                double sub808 = std::sin(2.0 * M_PI * kickFreq * t) * kickEnv * 0.72;
-                double snareEnv = (std::fmod(beat, 2.0) >= 1.0) ? std::exp(-(std::fmod(beat, 2.0) - 1.0) * 18.0) : 0.0;
-                double chordL = 0.22 * std::sin(2.0 * M_PI * 220.0 * t) + 0.16 * std::sin(2.0 * M_PI * 330.0 * t + 0.4)
-                              + 0.12 * std::sin(2.0 * M_PI * 3100.0 * t) * snareEnv;
-                double chordR = 0.22 * std::sin(2.0 * M_PI * 220.5 * t) + 0.16 * std::sin(2.0 * M_PI * 329.5 * t - 0.4)
-                              + 0.12 * std::cos(2.0 * M_PI * 3100.0 * t) * snareEnv;
-                dryL = static_cast<float>(sub808 + chordL);
-                dryR = static_cast<float>(sub808 + chordR);
-                demoPhase_ += 1.0;
+            float inAbs = std::max(std::fabs(dryL), std::fabs(dryR));
+            peakIn = std::max(peakIn, inAbs);
+
+            // Pure silence gate: if no signal is entering and filter states have decayed, output exact zero
+            if (inAbs < 1e-5f && smoothOutPeak_ < 1e-5f) {
+                if (outL) outL[i] = 0.0f;
+                if (outR) outR[i] = 0.0f;
+                if ((i & 7) == 0) {
+                    int w = scopeWriteIdx_.load(std::memory_order_relaxed);
+                    vecX_[w] = 0.0f;
+                    vecY_[w] = 0.0f;
+                    scopeWriteIdx_.store((w + 1) & (kScopeSize - 1), std::memory_order_relaxed);
+                }
+                continue;
             }
 
-            peakIn = std::max(peakIn, std::max(std::fabs(dryL), std::fabs(dryR)));
             float sL = dryL * inGainLin;
             float sR = dryR * inGainLin;
 
-            // --- MODULE I: PAA Audio Tape56K (Lyrec TR-533 + DSP56K Fixed-Point) & Ozone 12 Unlimiter ---
+            // --- MODULE I: PAA Audio Tape56K & Ozone 12 Unlimiter ---
             headBumpFilter_.processStereo(sL, sR);
             if (tapeDrv > 0.001f) {
                 float drv = 1.0f + tapeDrv * (tapeMode == 0 ? 3.2f : (tapeMode == 1 ? 2.4f : 4.2f));
-                // Asymmetric Lyrec TR-533 even-harmonic hysteresis
                 float asym = 0.08f * tapeDrv;
                 sL = std::tanh(sL * drv + asym) - std::tanh(asym);
                 sR = std::tanh(sR * drv + asym) - std::tanh(asym);
             }
-            if (dsp56k) {
-                // Motorola DSP56000 24-bit fixed-point accumulator quantization & soft saturation
+            if (dsp56k && inAbs > 1e-4f) {
                 const float qScale = (tapeMode == 2) ? 2048.0f : 32768.0f;
                 sL = std::round(sL * qScale) / qScale;
                 sR = std::round(sR * qScale) / qScale;
             }
-            // Ozone 12 Unlimiter + Impact transient restoration
             double absIn = 0.5 * (std::fabs(sL) + std::fabs(sR));
             fastTransEnv_ = 0.92 * fastTransEnv_ + 0.08 * absIn;
             slowTransEnv_ = 0.996 * slowTransEnv_ + 0.004 * absIn;
@@ -449,7 +459,6 @@ public:
             }
             maxGR = std::max(maxGR, grDB);
 
-            // Elliptical Bass Mono Maker + M/S Width + Stereoize II
             bassLowL_ = monoAlpha * bassLowL_ + (1.0 - monoAlpha) * sL;
             bassLowR_ = monoAlpha * bassLowR_ + (1.0 - monoAlpha) * sR;
             float highL = sL - static_cast<float>(bassLowL_);
@@ -473,12 +482,13 @@ public:
             sR = bassMono + mid - side;
 
             // --- MODULE V: Ozone 12 IRC IV Maximizer & True-Peak Brickwall Finalizer ---
-            if (upBoost > 0.001f) {
+            if (upBoost > 0.001f && det > 1e-4) {
                 float lowLvl = 1.0f / (1.0f + 3.0f * (std::fabs(sL) + std::fabs(sR)));
                 float upGain = 1.0f + upBoost * 0.45f * lowLvl;
                 sL *= upGain;
                 sR *= upGain;
             }
+            float preLimPeak = std::max(std::fabs(sL), std::fabs(sR)) * maxGainLin;
             sL *= maxGainLin;
             sR *= maxGainLin;
 
@@ -489,16 +499,34 @@ public:
             sL = std::max(-ceilLin, std::min(ceilLin, sL));
             sR = std::max(-ceilLin, std::min(ceilLin, sR));
 
+            float postLimPeak = std::max(std::fabs(sL), std::fabs(sR));
+            if (preLimPeak > postLimPeak && postLimPeak > 1e-5f) {
+                float limGR = 20.0f * std::log10(preLimPeak / postLimPeak);
+                maxGR = std::max(maxGR, limGR);
+            }
+
             float finalL = dryL * (1.0f - wetMix) + sL * wetMix;
             float finalR = dryR * (1.0f - wetMix) + sR * wetMix;
 
             if (outL) outL[i] = finalL;
             if (outR) outR[i] = finalR;
 
-            peakOut = std::max(peakOut, std::max(std::fabs(finalL), std::fabs(finalR)));
+            float outAbs = std::max(std::fabs(finalL), std::fabs(finalR));
+            peakOut = std::max(peakOut, outAbs);
+            sumSqOut += 0.5 * (finalL * finalL + finalR * finalR);
             corrNum  += finalL * finalR;
             corrDenL += finalL * finalL;
             corrDenR += finalR * finalR;
+
+            // Real-time 32-band filterbank analyzer (downsampled by 4 for low CPU)
+            if ((i & 3) == 0) {
+                for (int b = 0; b < kSpecBands; ++b) {
+                    float bl = finalL, br = finalR;
+                    specFilters_[b].processStereo(bl, br);
+                    double mag = 0.5 * (std::fabs(bl) + std::fabs(br));
+                    specEnv_[b] = (mag > specEnv_[b]) ? (0.75 * specEnv_[b] + 0.25 * mag) : (0.96 * specEnv_[b] + 0.04 * mag);
+                }
+            }
 
             if ((i & 7) == 0) {
                 int w = scopeWriteIdx_.load(std::memory_order_relaxed);
@@ -508,21 +536,95 @@ public:
             }
         }
 
-        inPeak_.store(peakIn, std::memory_order_relaxed);
-        outPeak_.store(peakOut, std::memory_order_relaxed);
-        currentGR_.store(maxGR, std::memory_order_relaxed);
+        // Smooth ballistics for Peak, RMS, and Spectrum
+        smoothInPeak_  = (peakIn > smoothInPeak_)   ? peakIn  : (smoothInPeak_ * 0.88f);
+        smoothOutPeak_ = (peakOut > smoothOutPeak_) ? peakOut : (smoothOutPeak_ * 0.88f);
+        float blockRms = std::sqrt(static_cast<float>(sumSqOut / std::max(1, numFrames)));
+        smoothOutRms_  = (blockRms > smoothOutRms_) ? (0.6f * smoothOutRms_ + 0.4f * blockRms) : (smoothOutRms_ * 0.90f);
+        smoothGR_      = (maxGR > smoothGR_)        ? maxGR   : (smoothGR_ * 0.86f);
+
+        if (smoothInPeak_ < 1e-4f)  smoothInPeak_ = 0.0f;
+        if (smoothOutPeak_ < 1e-4f) smoothOutPeak_ = 0.0f;
+        if (smoothOutRms_ < 1e-4f)  smoothOutRms_ = 0.0f;
+        if (smoothGR_ < 0.02f)      smoothGR_ = 0.0f;
+
+        if (peakIn > 1e-4f || peakOut > 1e-4f) {
+            activeSignalCounter_.fetch_add(1, std::memory_order_relaxed);
+        }
+
+        inPeak_.store(smoothInPeak_, std::memory_order_relaxed);
+        outPeak_.store(smoothOutPeak_, std::memory_order_relaxed);
+        outRms_.store(smoothOutRms_, std::memory_order_relaxed);
+        currentGR_.store(smoothGR_, std::memory_order_relaxed);
+
+        for (int b = 0; b < kSpecBands; ++b) {
+            if (smoothOutPeak_ == 0.0f) specEnv_[b] *= 0.65;
+            float db = 20.0f * std::log10(static_cast<float>(std::max(1e-4, specEnv_[b] * 3.5)));
+            float normMag = std::clamp((db + 60.0f) / 60.0f, 0.0f, 1.0f);
+            specMag_[b] = (normMag < 0.02f || smoothOutPeak_ == 0.0f) ? 0.0f : normMag;
+        }
 
         int gw = grWriteIdx_.load(std::memory_order_relaxed);
-        grHistory_[gw] = maxGR;
+        grHistory_[gw]   = smoothGR_;
+        wavePeakHist_[gw]= smoothOutPeak_;
+        waveRmsHist_[gw] = smoothOutRms_;
         grWriteIdx_.store((gw + 1) & 127, std::memory_order_relaxed);
 
+        if (smoothOutPeak_ > 0.0f) {
+            int wfRow = waterfallWriteRow_.load(std::memory_order_relaxed);
+            waterfall_[wfRow] = specMag_;
+            waterfallWriteRow_.store((wfRow + 1) % kWaterfallRows, std::memory_order_relaxed);
+        }
+
         double denom = std::sqrt(corrDenL * corrDenR);
-        float corr = (denom > 1e-9) ? static_cast<float>(corrNum / denom) : 0.92f;
+        float corr = (denom > 1e-9) ? static_cast<float>(corrNum / denom) : 0.0f;
         phaseCorr_.store(std::max(-1.0f, std::min(1.0f, corr)), std::memory_order_relaxed);
+    }
+
+    // Called by the 60 FPS UI timer so that if the DAW host pauses processBlock when stopped,
+    // all meters, spectrum bands, waterfall history, and waveform traces decay cleanly to zero.
+    void decayIfIdle() {
+        uint64_t cur = activeSignalCounter_.load(std::memory_order_relaxed);
+        if (cur != lastCheckedSignalCounter_) {
+            lastCheckedSignalCounter_ = cur;
+            idleTicks_ = 0;
+            return;
+        }
+        if (++idleTicks_ > 2) {
+            smoothInPeak_  *= 0.70f;
+            smoothOutPeak_ *= 0.70f;
+            smoothOutRms_  *= 0.70f;
+            smoothGR_      *= 0.70f;
+            if (smoothInPeak_ < 1e-4f)  smoothInPeak_ = 0.0f;
+            if (smoothOutPeak_ < 1e-4f) smoothOutPeak_ = 0.0f;
+            if (smoothOutRms_ < 1e-4f)  smoothOutRms_ = 0.0f;
+            if (smoothGR_ < 0.02f)      smoothGR_ = 0.0f;
+
+            inPeak_.store(smoothInPeak_, std::memory_order_relaxed);
+            outPeak_.store(smoothOutPeak_, std::memory_order_relaxed);
+            outRms_.store(smoothOutRms_, std::memory_order_relaxed);
+            currentGR_.store(smoothGR_, std::memory_order_relaxed);
+            phaseCorr_.store(0.0f, std::memory_order_relaxed);
+
+            for (int b = 0; b < kSpecBands; ++b) {
+                specEnv_[b] *= 0.65;
+                specMag_[b] *= 0.65f;
+                if (specMag_[b] < 0.02f) specMag_[b] = 0.0f;
+            }
+            if (smoothOutPeak_ == 0.0f) {
+                vecX_.fill(0.0f);
+                vecY_.fill(0.0f);
+                wavePeakHist_.fill(0.0f);
+                waveRmsHist_.fill(0.0f);
+                grHistory_.fill(0.0f);
+                for (auto& r : waterfall_) r.fill(0.0f);
+            }
+        }
     }
 
     float getInputPeak() const { return inPeak_.load(std::memory_order_relaxed); }
     float getOutputPeak() const { return outPeak_.load(std::memory_order_relaxed); }
+    float getOutputRMS() const { return outRms_.load(std::memory_order_relaxed); }
     float getCurrentGR() const { return currentGR_.load(std::memory_order_relaxed); }
     float getPhaseCorrelation() const { return phaseCorr_.load(std::memory_order_relaxed); }
     float getSootheBandAttenDB(int b) const { return (b >= 0 && b < kSootheBands) ? sootheAttenDB_[b] : 0.0f; }
@@ -530,7 +632,12 @@ public:
     const std::array<float, kScopeSize>& getVecX() const { return vecX_; }
     const std::array<float, kScopeSize>& getVecY() const { return vecY_; }
     const std::array<float, 128>& getGRHistory() const { return grHistory_; }
+    const std::array<float, 128>& getWavePeakHistory() const { return wavePeakHist_; }
+    const std::array<float, 128>& getWaveRmsHistory() const { return waveRmsHist_; }
     int getGRWriteIdx() const { return grWriteIdx_.load(std::memory_order_relaxed); }
+    const std::array<float, kSpecBands>& getSpecMag() const { return specMag_; }
+    const std::array<std::array<float, kSpecBands>, kWaterfallRows>& getWaterfall() const { return waterfall_; }
+    int getWaterfallWriteRow() const { return waterfallWriteRow_.load(std::memory_order_relaxed); }
 
 private:
     double sampleRate_ = 48000.0;
@@ -538,7 +645,8 @@ private:
     std::array<std::atomic<float>, kNumParams> params_;
     std::atomic<int> currentPreset_{0};
     std::atomic<int> skinIndex_{0};
-    std::atomic<bool> demoLoopPlaying_{true};
+    // OFF by default so the plugin NEVER generates audio unless the user clicks DEMO!
+    std::atomic<bool> demoLoopPlaying_{false};
 
     Biquad headBumpFilter_;
     Biquad bassPunchFilter_;
@@ -549,6 +657,12 @@ private:
     std::array<double, kSootheBands> sootheEnv_{};
     std::array<float, kSootheBands> sootheAttenDB_{};
 
+    std::array<Biquad, kSpecBands> specFilters_;
+    std::array<double, kSpecBands> specEnv_{};
+    std::array<float, kSpecBands> specMag_{};
+    std::array<std::array<float, kSpecBands>, kWaterfallRows> waterfall_{};
+    std::atomic<int> waterfallWriteRow_{0};
+
     double compEnv_ = 0.0;
     double fastTransEnv_ = 0.0;
     double slowTransEnv_ = 0.0;
@@ -558,18 +672,28 @@ private:
     std::array<float, 512> stereoDelayR_{};
     int stereoDelayIdx_ = 0;
 
+    float smoothInPeak_ = 0.0f;
+    float smoothOutPeak_ = 0.0f;
+    float smoothOutRms_ = 0.0f;
+    float smoothGR_ = 0.0f;
+
     std::atomic<float> inPeak_{0.0f};
     std::atomic<float> outPeak_{0.0f};
+    std::atomic<float> outRms_{0.0f};
     std::atomic<float> currentGR_{0.0f};
-    std::atomic<float> phaseCorr_{0.92f};
+    std::atomic<float> phaseCorr_{0.0f};
+    std::atomic<uint64_t> activeSignalCounter_{0};
+    uint64_t lastCheckedSignalCounter_ = 0;
+    int idleTicks_ = 0;
 
     std::array<float, kScopeSize> vecX_{};
     std::array<float, kScopeSize> vecY_{};
     std::atomic<int> scopeWriteIdx_{0};
 
     std::array<float, 128> grHistory_{};
+    std::array<float, 128> wavePeakHist_{};
+    std::array<float, 128> waveRmsHist_{};
     std::atomic<int> grWriteIdx_{0};
-    std::array<float, 64> fftMag_{};
 };
 
 } // namespace vsrm

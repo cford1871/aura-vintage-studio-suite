@@ -244,7 +244,6 @@ struct LiveEQNode {
 
         [self buildLayout];
 
-        // Schedule 60 FPS timer on NSRunLoopCommonModes so it animates smoothly during mouse drags and in DAWs
         _uiTimer = [NSTimer timerWithTimeInterval:(1.0 / 60.0)
                                            target:self
                                          selector:@selector(onTick:)
@@ -265,7 +264,13 @@ struct LiveEQNode {
 - (BOOL)acceptsFirstMouse:(NSEvent*)event { return YES; }
 
 - (void)onTick:(NSTimer*)timer {
-    _animPhase += 0.045;
+    if (_engine) {
+        _engine->decayIfIdle();
+    }
+    bool hasSignal = _engine && (_engine->getInputPeak() > 0.0005f || _engine->getOutputPeak() > 0.0005f);
+    if (hasSignal) {
+        _animPhase += 0.045;
+    }
     [self setNeedsDisplay:YES];
 }
 
@@ -300,10 +305,8 @@ struct LiveEQNode {
     _buttons.push_back({-1, -1, 152, NSMakeRect(136, 68, 38, 18), @"MID",  1});
     _buttons.push_back({-1, -1, 153, NSMakeRect(178, 68, 42, 18), @"SIDE", 3});
 
-    // Top-right overlay knob inside EQ Analyzer: Slope (6 dB/oct to 96 dB/oct)
     _knobs.push_back({vsrm::kSootheTilt, 722, 84, 12, @"Slope", 1});
 
-    // 5 Interactive Multi-Band Bézier EQ Nodes (Draggable in X Frequency and Y Gain!)
     _eqNodes.push_back({vsrm::kBassPunch,        0.145f, 0.58f, 3, true,  false});
     _eqNodes.push_back({vsrm::kBassSustain,      0.305f, 0.44f, 2, false, false});
     _eqNodes.push_back({vsrm::kStabilizerSculpt, 0.415f, 0.56f, 1, true,  false});
@@ -315,15 +318,12 @@ struct LiveEQNode {
 
     // =========================================================================
     // TIER 4: Bottom 5-Module Hardware Processing Rack (y = 482, h = 230)
-    // 5 equal-height modules across x = 10..1270 (width = 246 each, gap = 7.5)
     // =========================================================================
     const CGFloat rackY = 482.0;
     const CGFloat modW  = 246.0;
     const CGFloat gap   = 7.5;
 
-    // -------------------------------------------------------------------------
     // MODULE 1: EQ / SPECTRAL SHAPER (x = 10)
-    // -------------------------------------------------------------------------
     CGFloat m1 = 10.0;
     _buttons.push_back({-1, -1, 160, NSMakeRect(m1 + 12,  rackY + 32, 40, 16), @"MID",    1});
     _buttons.push_back({-1, -1, 161, NSMakeRect(m1 + 55,  rackY + 32, 42, 16), @"SIDE",   3});
@@ -336,9 +336,7 @@ struct LiveEQNode {
     _knobs.push_back({vsrm::kBassPunch,    m1 + 150, rackY + 164, 18, @"Gain",              3});
     _knobs.push_back({vsrm::kSootheMaxCut, m1 + 208, rackY + 164, 18, @"Dynamic\nThreshold", 4});
 
-    // -------------------------------------------------------------------------
-    // MODULE 2: AIR & SPACE (High-Frequency & Ambience Exciter) (x = 263.5)
-    // -------------------------------------------------------------------------
+    // MODULE 2: AIR & SPACE (x = 263.5)
     CGFloat m2 = m1 + modW + gap;
     _buttons.push_back({-1, -1, 170, NSMakeRect(m2 + 73, rackY + 32, 100, 18), @"STEREO / MS", 1});
 
@@ -346,9 +344,7 @@ struct LiveEQNode {
     _knobs.push_back({vsrm::kSootheDepth,      m2 + 182, rackY + 86,  21, @"SPACE", 3});
     _knobs.push_back({vsrm::kStabilizerSculpt, m2 + 54,  rackY + 164, 19, @"WIDTH", 2});
 
-    // -------------------------------------------------------------------------
-    // MODULE 3: STEREO IMAGING (M/S Width Controller) (x = 517)
-    // -------------------------------------------------------------------------
+    // MODULE 3: STEREO IMAGING (x = 517)
     CGFloat m3 = m2 + modW + gap;
     _buttons.push_back({-1, -1, 180, NSMakeRect(m3 + 52,  rackY + 32, 66, 16), @"MID",  1});
     _buttons.push_back({-1, -1, 181, NSMakeRect(m3 + 126, rackY + 32, 66, 16), @"SIDE", 3});
@@ -359,9 +355,7 @@ struct LiveEQNode {
     _knobs.push_back({vsrm::kStereoWidth,  m3 + 74,  rackY + 174, 16, @"Width", 1});
     _knobs.push_back({vsrm::kBassMonoFreq, m3 + 172, rackY + 174, 16, @"Side",  3});
 
-    // -------------------------------------------------------------------------
     // MODULE 4: DYNAMIC MULTIBAND COMPRESSOR (x = 770.5)
-    // -------------------------------------------------------------------------
     CGFloat m4 = m3 + modW + gap;
     _buttons.push_back({-1, -1, 120, NSMakeRect(m4 + 12,  rackY + 32, 48, 18), @"Band 1",   1});
     _buttons.push_back({-1, -1, 121, NSMakeRect(m4 + 63,  rackY + 32, 58, 18), @"MID/SIDE", 1});
@@ -376,9 +370,7 @@ struct LiveEQNode {
     _knobs.push_back({vsrm::kTapeBiasBump,  m4 + 94,  rackY + 160, 17, @"Ratio",     3});
     _knobs.push_back({vsrm::kUpwardBoost,   m4 + 152, rackY + 160, 17, @"Gain",      4});
 
-    // -------------------------------------------------------------------------
     // MODULE 5: MAXIMIZER / LIMITER (x = 1024)
-    // -------------------------------------------------------------------------
     CGFloat m5 = m4 + modW + gap;
     _buttons.push_back({-1, -1, 130, NSMakeRect(m5 + 122, rackY + 32, 112, 18), @"MID/SIDE LINK ▾", 1});
     _buttons.push_back({vsrm::kSoftClipOn, -1, 131, NSMakeRect(m5 + 142, rackY + 152, 44, 18), @"Clip", 4});
@@ -479,7 +471,7 @@ static void drawSlatePanel(CGContextRef ctx, NSRect r, const vsrm::AuraLiveTheme
         NSForegroundColorAttributeName: [NSColor colorWithCalibratedRed:th.dimR green:th.dimG blue:th.dimB alpha:0.92]
     };
 
-    // Read live DSP parameters so every visualizer & readout reacts dynamically
+    // Read live DSP parameters & real audio measurements
     float qNorm      = _engine ? _engine->getParameterNormalized(vsrm::kSootheDetail)     : 0.64f;
     float freqNorm   = _engine ? _engine->getParameterNormalized(vsrm::kBassMonoFreq)     : 0.40f;
     float gainNorm   = _engine ? _engine->getParameterNormalized(vsrm::kBassPunch)        : 0.54f;
@@ -489,19 +481,19 @@ static void drawSlatePanel(CGContextRef ctx, NSRect r, const vsrm::AuraLiveTheme
     float widthNorm  = _engine ? _engine->getParameterNormalized(vsrm::kStereoWidth)      : 0.61f;
     float stGainNorm = _engine ? _engine->getParameterNormalized(vsrm::kStabilizerSculpt) : 0.42f;
     float delayNorm  = _engine ? _engine->getParameterNormalized(vsrm::kUnlimiterAmount)  : 0.26f;
-    float compThr    = _engine ? _engine->getParameterNormalized(vsrm::kCompThreshold)    : 0.52f;
-    float maxGain    = _engine ? _engine->getParameterNormalized(vsrm::kMaximizerGain)    : 0.35f;
     float ceilNorm   = _engine ? _engine->getParameterNormalized(vsrm::kCeiling)          : 0.96f;
-    float inPeakLin  = _engine ? _engine->getInputPeak()  : 0.65f;
-    float outPeakLin = _engine ? _engine->getOutputPeak() : 0.78f;
-    float liveGR     = _engine ? _engine->getCurrentGR()  : 2.4f;
+
+    float inPeakLin  = _engine ? _engine->getInputPeak()  : 0.0f;
+    float outPeakLin = _engine ? _engine->getOutputPeak() : 0.0f;
+    float outRmsLin  = _engine ? _engine->getOutputRMS()  : 0.0f;
+    float liveGR     = _engine ? _engine->getCurrentGR()  : 0.0f;
+    bool hasSignal   = (inPeakLin > 0.0005f || outPeakLin > 0.0005f);
 
     // =========================================================================
     // TIER 1: TOP TRANSPORT & GLOBAL HEADER BAR (y = 2..42)
     // =========================================================================
     drawSlatePanel(ctx, NSMakeRect(2, 2, W - 4, 40), th, false);
 
-    // Glowing Triangular 'A' Logo on Left
     CGContextSaveGState(ctx);
     NSBezierPath* logoA = [NSBezierPath bezierPath];
     [logoA moveToPoint:NSMakePoint(26, 9)];
@@ -529,7 +521,6 @@ static void drawSlatePanel(CGContextRef ctx, NSRect r, const vsrm::AuraLiveTheme
         NSForegroundColorAttributeName: [NSColor colorWithCalibratedRed:th.amberR green:th.amberG blue:th.amberB alpha:0.92]
     }];
 
-    // Center Preset Display Box
     NSRect presetBox = NSMakeRect(430, 8, 240, 26);
     NSBezierPath* pWell = [NSBezierPath bezierPathWithRoundedRect:presetBox xRadius:3.5 yRadius:3.5];
     [[NSColor colorWithCalibratedRed:th.wellR green:th.wellG blue:th.wellB alpha:1.0] setFill];
@@ -550,7 +541,6 @@ static void drawSlatePanel(CGContextRef ctx, NSRect r, const vsrm::AuraLiveTheme
         NSForegroundColorAttributeName: [NSColor colorWithCalibratedRed:th.dimR green:th.dimG blue:th.dimB alpha:0.85]
     }];
 
-    // Interactive Sidechain toggle switch pill
     NSRect scSwitch = NSMakeRect(876, 12, 36, 18);
     NSBezierPath* scPath = [NSBezierPath bezierPathWithRoundedRect:scSwitch xRadius:9.0 yRadius:9.0];
     [[NSColor colorWithCalibratedRed:0.05 green:0.06 blue:0.08 alpha:1.0] setFill];
@@ -608,22 +598,24 @@ static void drawSlatePanel(CGContextRef ctx, NSRect r, const vsrm::AuraLiveTheme
     }
     CGContextStrokePath(ctx);
 
-    // Animated Right Vertical Cyan/Violet Gradient Bar inside EQ panel
+    // Right Vertical Cyan/Violet Spectrum Level Bar inside EQ panel (driven by real signal!)
     NSRect gradBar = NSMakeRect(px0 + pw + 28, py0 + 2, 13, ph - 4);
     [[NSColor colorWithCalibratedRed:0.03 green:0.04 blue:0.06 alpha:1.0] setFill];
     NSRectFill(gradBar);
-    CGFloat barTopOff = 24.0 + 14.0 * std::sin(_animPhase * 2.2) - maxGain * 18.0;
-    NSRect activeGradBar = NSMakeRect(gradBar.origin.x + 1, gradBar.origin.y + std::max(4.0, barTopOff), 11, ph - std::max(8.0, barTopOff + 4.0));
-    NSGradient* vBarGrad = [[NSGradient alloc] initWithColors:@[
-        [NSColor colorWithCalibratedRed:th.violetR green:th.violetG blue:th.violetB alpha:0.95],
-        [NSColor colorWithCalibratedRed:th.cyanR green:th.cyanG blue:th.cyanB alpha:0.95],
-        [NSColor colorWithCalibratedRed:0.08 green:0.25 blue:0.45 alpha:0.9]
-    ]];
-    [vBarGrad drawInRect:activeGradBar angle:-90.0];
+    if (hasSignal) {
+        float outNorm = std::clamp((20.0f * std::log10(std::max(1e-4f, outPeakLin)) + 60.0f) / 60.0f, 0.0f, 1.0f);
+        CGFloat activeH = outNorm * (ph - 8.0);
+        NSRect activeGradBar = NSMakeRect(gradBar.origin.x + 1, NSMaxY(gradBar) - activeH - 2, 11, activeH);
+        NSGradient* vBarGrad = [[NSGradient alloc] initWithColors:@[
+            [NSColor colorWithCalibratedRed:th.violetR green:th.violetG blue:th.violetB alpha:0.95],
+            [NSColor colorWithCalibratedRed:th.cyanR green:th.cyanG blue:th.cyanB alpha:0.95],
+            [NSColor colorWithCalibratedRed:0.08 green:0.25 blue:0.45 alpha:0.9]
+        ]];
+        [vBarGrad drawInRect:activeGradBar angle:-90.0];
+    }
 
     CGContextClipToRect(ctx, NSRectToCGRect(plotRect));
 
-    // Sync EQ node vertical positions with DSP parameters unless actively dragging
     if (_dragNodeIdx != 0) _eqNodes[0].normY = std::clamp(0.82f - gainNorm * 0.64f, 0.14f, 0.86f);
     if (_dragNodeIdx != 1) _eqNodes[1].normY = std::clamp(0.76f - (_engine ? _engine->getParameterNormalized(vsrm::kBassSustain) : 0.68f) * 0.56f, 0.14f, 0.86f);
     if (_dragNodeIdx != 2) _eqNodes[2].normY = std::clamp(0.80f - stGainNorm * 0.58f, 0.14f, 0.86f);
@@ -632,7 +624,7 @@ static void drawSlatePanel(CGContextRef ctx, NSRect r, const vsrm::AuraLiveTheme
 
     double bw = 0.045 + (1.0 - qNorm) * 0.085;
 
-    // 1) Large Glowing Purple/Violet Bell Curve (Physical / Secondary Spectral Envelope)
+    // 1) Purple/Violet Filter Envelope Fill
     if (_physOverlayOn) {
         NSBezierPath* purpleBell = [NSBezierPath bezierPath];
         [purpleBell moveToPoint:NSMakePoint(px0, py0 + ph)];
@@ -645,27 +637,28 @@ static void drawSlatePanel(CGContextRef ctx, NSRect r, const vsrm::AuraLiveTheme
         }
         [purpleBell lineToPoint:NSMakePoint(px0 + pw, py0 + ph)];
         [purpleBell closePath];
-        NSGradient* purpGrad = [[NSGradient alloc] initWithStartingColor:[NSColor colorWithCalibratedRed:0.78 green:0.32 blue:0.96 alpha:0.62]
-                                                             endingColor:[NSColor colorWithCalibratedRed:0.42 green:0.12 blue:0.68 alpha:0.05]];
+        NSGradient* purpGrad = [[NSGradient alloc] initWithStartingColor:[NSColor colorWithCalibratedRed:0.78 green:0.32 blue:0.96 alpha:0.52]
+                                                             endingColor:[NSColor colorWithCalibratedRed:0.42 green:0.12 blue:0.68 alpha:0.04]];
         [purpGrad drawInBezierPath:purpleBell angle:90.0];
-        [[NSColor colorWithCalibratedRed:0.86 green:0.48 blue:1.0 alpha:0.85] setStroke];
-        [purpleBell setLineWidth:1.4];
+        [[NSColor colorWithCalibratedRed:0.86 green:0.48 blue:1.0 alpha:0.75] setStroke];
+        [purpleBell setLineWidth:1.3];
         [purpleBell stroke];
     }
 
-    // 2) Live 60 FPS High-Resolution Jagged Cyan FFT Spectrum Trace
-    if (_fftOverlayOn) {
+    // 2) Real-Time 32-Band FFT Spectrum Trace ( ONLY drawn when real audio signal is present! )
+    if (_fftOverlayOn && _engine && hasSignal) {
+        const auto& spec = _engine->getSpecMag();
         NSBezierPath* fftPath = [NSBezierPath bezierPath];
         [fftPath moveToPoint:NSMakePoint(px0, py0 + ph)];
-        for (int x = 0; x <= (int)pw; x += 2) {
+        for (int x = 0; x <= (int)pw; x += 3) {
             double nf = (double)x / pw;
-            double env = (105.0 + gainNorm * 35.0) * std::exp(-std::pow((nf - 0.36) / 0.14, 2.0))
-                       + (80.0 + maxGain * 30.0 + airNorm * 25.0) * std::exp(-std::pow((nf - 0.56) / 0.12, 2.0))
-                       + 35.0 * (1.0 - nf);
-            double jag = 14.0 * std::sin(x * 0.35 + _animPhase * 2.5)
-                       + 10.0 * std::cos(x * 0.85 - _animPhase * 3.2)
-                       + 6.5  * std::sin(x * 1.7 + _animPhase * 1.9);
-            CGFloat sy = std::clamp(py0 + ph - (env + jag), py0 + 20.0, py0 + ph - 2.0);
+            double fIdx = nf * (vsrm::VSRMasterEngine::kSpecBands - 1);
+            int b0 = std::clamp((int)fIdx, 0, vsrm::VSRMasterEngine::kSpecBands - 1);
+            int b1 = std::min(b0 + 1, vsrm::VSRMasterEngine::kSpecBands - 1);
+            double frac = fIdx - b0;
+            double mag = spec[b0] * (1.0 - frac) + spec[b1] * frac;
+            double fine = 0.04 * mag * std::sin(x * 0.45 + _animPhase * 2.5);
+            CGFloat sy = std::clamp(py0 + ph - (mag + fine) * (ph * 0.88), py0 + 12.0, py0 + ph - 1.0);
             [fftPath lineToPoint:NSMakePoint(px0 + x, sy)];
         }
         [fftPath lineToPoint:NSMakePoint(px0 + pw, py0 + ph)];
@@ -688,7 +681,7 @@ static void drawSlatePanel(CGContextRef ctx, NSRect r, const vsrm::AuraLiveTheme
     }
     [amberBell lineToPoint:NSMakePoint(px0 + pw * std::min(1.0, _eqNodes[3].normX + 0.16), py0 + ph)];
     [amberBell closePath];
-    [[NSColor colorWithCalibratedRed:th.amberR green:th.amberG blue:th.amberB alpha:0.26] setFill];
+    [[NSColor colorWithCalibratedRed:th.amberR green:th.amberG blue:th.amberB alpha:0.24] setFill];
     [amberBell fill];
 
     // 4) Continuous Multi-Band Composite EQ Curves (Cyan Mid, Violet Side, Amber Dynamic)
@@ -787,7 +780,6 @@ static void drawSlatePanel(CGContextRef ctx, NSRect r, const vsrm::AuraLiveTheme
     }
     CGContextRestoreGState(ctx);
 
-    // Slope readout badge under top-right Slope knob
     int slopeDbOct = 6 + (int)std::round(slopeNorm * 15.0f) * 6;
     [[NSString stringWithFormat:@"%d dB/oct", slopeDbOct] drawInRect:NSMakeRect(692, 108, 60, 12) withAttributes:@{
         NSFontAttributeName: [NSFont systemFontOfSize:8.0 weight:NSFontWeightSemibold],
@@ -796,7 +788,7 @@ static void drawSlatePanel(CGContextRef ctx, NSRect r, const vsrm::AuraLiveTheme
     }];
 
     // -------------------------------------------------------------------------
-    // TIER 2 RIGHT: Mastering Metering Suite (x=842..1270, y=48..320)
+    // TIER 2 RIGHT: Mastering Metering Suite (100% Real Signal Driven!)
     // -------------------------------------------------------------------------
     NSRect mWell = NSMakeRect(850, 56, 412, 254);
     [[NSColor colorWithCalibratedRed:th.wellR green:th.wellG blue:th.wellB alpha:1.0] setFill];
@@ -815,6 +807,12 @@ static void drawSlatePanel(CGContextRef ctx, NSRect r, const vsrm::AuraLiveTheme
     [@"True Peak" drawInRect:NSMakeRect(1108, 62, 66, 14) withAttributes:mHdrFont];
     [@"LUFS"  drawInRect:NSMakeRect(1192, 62, 54, 14) withAttributes:mHdrFont];
 
+    auto linToMeterNorm = [](float lin) -> float {
+        if (lin <= 0.0005f) return -1.0f; // Completely unlit when silent!
+        float db = 20.0f * std::log10(lin);
+        return std::clamp((db + 60.0f) / 60.0f, 0.0f, 1.0f);
+    };
+
     auto drawLEDColumn = [&](CGFloat colX, CGFloat colW, float levelNorm) {
         const int segs = 34;
         const CGFloat topY = 84.0;
@@ -822,27 +820,28 @@ static void drawSlatePanel(CGContextRef ctx, NSRect r, const vsrm::AuraLiveTheme
         for (int s = 0; s < segs; ++s) {
             float sn = (float)(segs - 1 - s) / (segs - 1);
             CGFloat sy = topY + s * (totH / segs);
-            bool lit = (sn <= levelNorm);
+            bool lit = (levelNorm >= 0.0f && sn <= levelNorm);
             NSColor* c = nil;
-            if (sn > 0.88f)      c = [NSColor colorWithCalibratedRed:0.95 green:0.24 blue:0.20 alpha:(lit ? 0.98 : 0.18)];
-            else if (sn > 0.72f) c = [NSColor colorWithCalibratedRed:th.amberR green:th.amberG blue:th.amberB alpha:(lit ? 0.96 : 0.18)];
-            else                 c = [NSColor colorWithCalibratedRed:th.greenR green:th.greenG blue:th.greenB alpha:(lit ? 0.95 : 0.16)];
+            if (sn > 0.88f)      c = [NSColor colorWithCalibratedRed:0.95 green:0.24 blue:0.20 alpha:(lit ? 0.98 : 0.16)];
+            else if (sn > 0.72f) c = [NSColor colorWithCalibratedRed:th.amberR green:th.amberG blue:th.amberB alpha:(lit ? 0.96 : 0.16)];
+            else                 c = [NSColor colorWithCalibratedRed:th.greenR green:th.greenG blue:th.greenB alpha:(lit ? 0.95 : 0.14)];
             [c setFill];
             NSRectFillUsingOperation(NSMakeRect(colX, sy, colW, (totH / segs) - 1.8), NSCompositingOperationSourceOver);
         }
     };
 
-    float boostDrive = (maxGain - 0.35f) * 0.25f + (gainNorm - 0.5f) * 0.15f + (outPeakLin - 0.5f) * 0.12f;
-    float w1 = 0.06f * std::sin(_animPhase * 3.1);
-    float w2 = 0.05f * std::cos(_animPhase * 2.7);
-    drawLEDColumn(878, 12, std::clamp(0.76f + (inPeakLin - 0.5f) * 0.2f + w1, 0.15f, 0.98f));
-    drawLEDColumn(912, 12, std::clamp(0.82f + boostDrive + w2, 0.15f, 0.98f));
-    drawLEDColumn(944, 12, std::clamp(0.72f + boostDrive + w1 * 0.7f, 0.15f, 0.95f));
+    float inNorm  = linToMeterNorm(inPeakLin);
+    float pkNorm  = linToMeterNorm(outPeakLin);
+    float rmsNorm = linToMeterNorm(outRmsLin);
 
-    drawLEDColumn(1124, 13, std::clamp(0.78f + boostDrive + w2, 0.15f, 0.98f));
-    drawLEDColumn(1142, 13, std::clamp(0.84f + boostDrive + w1, 0.15f, 0.98f));
-    drawLEDColumn(1206, 13, std::clamp(0.70f + boostDrive + w1 * 0.8f, 0.15f, 0.96f));
-    drawLEDColumn(1224, 13, std::clamp(0.70f + boostDrive + w2 * 0.8f, 0.15f, 0.96f));
+    drawLEDColumn(878, 12, inNorm);
+    drawLEDColumn(912, 12, pkNorm);
+    drawLEDColumn(944, 12, rmsNorm);
+
+    drawLEDColumn(1124, 13, pkNorm);
+    drawLEDColumn(1142, 13, pkNorm);
+    drawLEDColumn(1206, 13, rmsNorm);
+    drawLEDColumn(1224, 13, rmsNorm);
 
     NSString* pkScale[11] = {@"0", @"-1", @"-3", @"-6", @"-12", @"-18", @"-24", @"-37", @"-30", @"-55", @"-58"};
     NSString* lufsScale[11] = {@"0", @"-1", @"-2", @"-6", @"-10", @"-12", @"-14", @"-18", @"-20", @"-23", @"-25"};
@@ -852,21 +851,25 @@ static void drawSlatePanel(CGContextRef ctx, NSRect r, const vsrm::AuraLiveTheme
         [lufsScale[i] drawAtPoint:NSMakePoint(1182, sy) withAttributes:tinyAxisFont];
     }
 
-    [@"48"  drawAtPoint:NSMakePoint(876, 286) withAttributes:@{NSFontAttributeName:[NSFont systemFontOfSize:10.0 weight:NSFontWeightSemibold], NSForegroundColorAttributeName:[NSColor colorWithCalibratedRed:th.amberR green:th.amberG blue:th.amberB alpha:1.0]}];
-    [@"130" drawAtPoint:NSMakePoint(908, 286) withAttributes:@{NSFontAttributeName:[NSFont systemFontOfSize:10.0 weight:NSFontWeightSemibold], NSForegroundColorAttributeName:[NSColor colorWithCalibratedRed:th.greenR green:th.greenG blue:th.greenB alpha:1.0]}];
-    [@"0.8" drawAtPoint:NSMakePoint(942, 286) withAttributes:@{NSFontAttributeName:[NSFont systemFontOfSize:10.0 weight:NSFontWeightSemibold], NSForegroundColorAttributeName:[NSColor colorWithCalibratedRed:th.cyanR green:th.cyanG blue:th.cyanB alpha:1.0]}];
-    [@"-7   0" drawAtPoint:NSMakePoint(1124, 286) withAttributes:@{NSFontAttributeName:[NSFont systemFontOfSize:10.0 weight:NSFontWeightSemibold], NSForegroundColorAttributeName:[NSColor colorWithCalibratedRed:th.greenR green:th.greenG blue:th.greenB alpha:1.0]}];
-    [@"-6  -6" drawAtPoint:NSMakePoint(1204, 286) withAttributes:@{NSFontAttributeName:[NSFont systemFontOfSize:10.0 weight:NSFontWeightSemibold], NSForegroundColorAttributeName:[NSColor colorWithCalibratedRed:0.90 green:0.32 blue:0.30 alpha:1.0]}];
+    float inDB  = hasSignal ? (20.0f * std::log10(std::max(1e-4f, inPeakLin)))  : -60.0f;
+    float outDB = hasSignal ? (20.0f * std::log10(std::max(1e-4f, outPeakLin))) : -60.0f;
+    float rmsDB = hasSignal ? (20.0f * std::log10(std::max(1e-4f, outRmsLin)))  : -60.0f;
+    float crestDB = hasSignal ? std::max(0.0f, outDB - rmsDB) : 0.0f;
 
-    // Live Center Digital Readout Stack (All 6 Readouts from Spec!)
+    [[NSString stringWithFormat:@"%.0f", hasSignal ? inDB : 0.0f]  drawAtPoint:NSMakePoint(876, 286) withAttributes:@{NSFontAttributeName:[NSFont systemFontOfSize:10.0 weight:NSFontWeightSemibold], NSForegroundColorAttributeName:[NSColor colorWithCalibratedRed:th.amberR green:th.amberG blue:th.amberB alpha:1.0]}];
+    [[NSString stringWithFormat:@"%.0f", hasSignal ? outDB : 0.0f] drawAtPoint:NSMakePoint(908, 286) withAttributes:@{NSFontAttributeName:[NSFont systemFontOfSize:10.0 weight:NSFontWeightSemibold], NSForegroundColorAttributeName:[NSColor colorWithCalibratedRed:th.greenR green:th.greenG blue:th.greenB alpha:1.0]}];
+    [[NSString stringWithFormat:@"%.1f", hasSignal ? crestDB : 0.0f] drawAtPoint:NSMakePoint(942, 286) withAttributes:@{NSFontAttributeName:[NSFont systemFontOfSize:10.0 weight:NSFontWeightSemibold], NSForegroundColorAttributeName:[NSColor colorWithCalibratedRed:th.cyanR green:th.cyanG blue:th.cyanB alpha:1.0]}];
+    [[NSString stringWithFormat:@"%.0f", hasSignal ? outDB : 0.0f] drawAtPoint:NSMakePoint(1128, 286) withAttributes:@{NSFontAttributeName:[NSFont systemFontOfSize:10.0 weight:NSFontWeightSemibold], NSForegroundColorAttributeName:[NSColor colorWithCalibratedRed:th.greenR green:th.greenG blue:th.greenB alpha:1.0]}];
+    [[NSString stringWithFormat:@"%.0f", hasSignal ? rmsDB : 0.0f] drawAtPoint:NSMakePoint(1210, 286) withAttributes:@{NSFontAttributeName:[NSFont systemFontOfSize:10.0 weight:NSFontWeightSemibold], NSForegroundColorAttributeName:[NSColor colorWithCalibratedRed:0.90 green:0.32 blue:0.30 alpha:1.0]}];
+
     struct CenterReadout { NSString* lbl; NSString* val; CGFloat r, g, b; };
     CenterReadout cStack[6] = {
-        {@"Short Term",    [NSString stringWithFormat:@"%.2f", -32.94f + boostDrive * 12.0f + w1 * 2.0f], 0.96, 0.78, 0.22},
-        {@"Integrated",    [NSString stringWithFormat:@"%.2f", -12.37f + boostDrive * 8.0f + w2 * 1.5f],  0.96, 0.78, 0.22},
-        {@"LRA Momentary", [NSString stringWithFormat:@"%+.2f", +2.53f + boostDrive * 4.0f],              th.greenR, th.greenG, th.greenB},
-        {@"LRA / Range",   [NSString stringWithFormat:@"%.2f", -6.08f - (1.0f - compThr) * 2.5f],         0.92, 0.34, 0.30},
-        {@"Crest Factor",  [NSString stringWithFormat:@"%.1f dB", 1.3f + (1.0f - maxGain) * 3.4f],        th.violetR, th.violetG, th.violetB},
-        {@"True Peak",     [NSString stringWithFormat:@"%.2f", -15.02f + maxGain * 6.0f],                 th.cyanR, th.cyanG, th.cyanB}
+        {@"Short Term",    hasSignal ? [NSString stringWithFormat:@"%.2f", rmsDB - 0.8f] : @"-∞ dB",  0.96, 0.78, 0.22},
+        {@"Integrated",    hasSignal ? [NSString stringWithFormat:@"%.2f", rmsDB - 1.2f] : @"-∞ LUFS",0.96, 0.78, 0.22},
+        {@"LRA Momentary", hasSignal ? [NSString stringWithFormat:@"%+.2f", liveGR]      : @"0.00",   th.greenR, th.greenG, th.greenB},
+        {@"LRA / Range",   hasSignal ? [NSString stringWithFormat:@"%.2f", -crestDB]     : @"0.00",   0.92, 0.34, 0.30},
+        {@"Crest Factor",  hasSignal ? [NSString stringWithFormat:@"%.1f dB", crestDB]   : @"0.0 dB", th.violetR, th.violetG, th.violetB},
+        {@"True Peak",     hasSignal ? [NSString stringWithFormat:@"%.2f", outDB]        : @"-∞ dBTP",th.cyanR, th.cyanG, th.cyanB}
     };
     for (int i = 0; i < 6; ++i) {
         CGFloat ry = 60.0 + i * 40.5;
@@ -893,7 +896,7 @@ static void drawSlatePanel(CGContextRef ctx, NSRect r, const vsrm::AuraLiveTheme
     drawSlatePanel(ctx, gonioFrame, th, false);
 
     // -------------------------------------------------------------------------
-    // TIER 3 LEFT: Live Scrolling Perspective 3D Waterfall Spectrogram
+    // TIER 3 LEFT: Real-Time 3D Waterfall Spectrogram (Driven by Real Audio!)
     // -------------------------------------------------------------------------
     NSRect specWell = NSMakeRect(20, 334, 804, 132);
     [[NSColor colorWithCalibratedRed:0.03 green:0.04 blue:0.065 alpha:1.0] setFill];
@@ -912,47 +915,48 @@ static void drawSlatePanel(CGContextRef ctx, NSRect r, const vsrm::AuraLiveTheme
     [trapClip closePath];
     [trapClip addClip];
 
-    [[NSColor colorWithCalibratedRed:0.04 green:0.14 blue:0.32 alpha:1.0] setFill];
+    [[NSColor colorWithCalibratedRed:0.03 green:0.09 blue:0.20 alpha:1.0] setFill];
     [trapClip fill];
 
-    const int trapRows = 44;
-    const int trapCols = 84;
-    for (int r = 0; r < trapRows; ++r) {
-        double v = (double)r / (trapRows - 1);
-        double vNext = (double)(r + 1) / (trapRows - 1);
-        CGFloat y0 = trapTopY + v * (trapBotY - trapTopY);
-        CGFloat y1 = trapTopY + vNext * (trapBotY - trapTopY) + 0.9;
-        CGFloat rowL0 = trapTopL + v * (trapBotL - trapTopL);
-        CGFloat rowR0 = trapTopR + v * (trapBotR - trapTopR);
-        CGFloat rowW  = rowR0 - rowL0;
+    if (_engine) {
+        const auto& wf = _engine->getWaterfall();
+        int wfWrite = _engine->getWaterfallWriteRow();
+        const int trapRows = vsrm::VSRMasterEngine::kWaterfallRows;
+        const int trapCols = vsrm::VSRMasterEngine::kSpecBands;
 
-        for (int c = 0; c < trapCols; ++c) {
-            double u = (double)c / trapCols;
-            double scrollT = v * 6.0 - _animPhase * 1.4;
-            double drift = 0.018 * std::sin(scrollT);
-            double band1 = std::exp(-std::pow((u - (_eqNodes[0].normX + 0.04 + drift)) / 0.055, 2.0)) * (1.3 - _eqNodes[0].normY);
-            double band2 = std::exp(-std::pow((u - (_eqNodes[2].normX + 0.02 - drift)) / 0.075, 2.0)) * (0.75 + 0.25 * std::sin(scrollT * 1.5));
-            double band3 = std::exp(-std::pow((u - (_eqNodes[4].normX + 0.04 + drift)) / 0.065, 2.0)) * (1.4 - _eqNodes[4].normY);
-            double grain = 0.16 * std::sin(u * 60.0 + scrollT * 3.0) + 0.12 * std::cos(u * 35.0 - scrollT * 2.2);
-            double intensity = std::clamp(band1 * 1.15 + band2 * 0.90 + band3 * 1.15 + grain, 0.0, 1.25);
+        for (int r = 0; r < trapRows; ++r) {
+            int histRow = (wfWrite - 1 - r + trapRows * 2) % trapRows;
+            double v = (double)r / (trapRows - 1);
+            double vNext = (double)(r + 1) / (trapRows - 1);
+            CGFloat y0 = trapTopY + v * (trapBotY - trapTopY);
+            CGFloat y1 = trapTopY + vNext * (trapBotY - trapTopY) + 0.9;
+            CGFloat rowL0 = trapTopL + v * (trapBotL - trapTopL);
+            CGFloat rowR0 = trapTopR + v * (trapBotR - trapTopR);
+            CGFloat rowW  = rowR0 - rowL0;
 
-            CGFloat cr, cg, cb;
-            if (intensity < 0.22) {
-                cr = 0.03; cg = 0.09 + intensity * 0.6; cb = 0.22 + intensity * 1.1;
-            } else if (intensity < 0.52) {
-                double t = (intensity - 0.22) / 0.30;
-                cr = 0.08 + t * 0.75; cg = 0.32 + t * 0.22; cb = 0.68 - t * 0.45;
-            } else if (intensity < 0.85) {
-                double t = (intensity - 0.52) / 0.33;
-                cr = 0.88 + t * 0.12; cg = 0.48 + t * 0.38; cb = 0.12;
-            } else {
-                cr = 1.00; cg = 0.88 + std::min(0.12, (intensity - 0.85) * 0.4); cb = 0.42;
+            for (int c = 0; c < trapCols; ++c) {
+                double intensity = wf[histRow][c];
+                if (intensity <= 0.01) continue; // Keep quiet background dark when no signal!
+
+                CGFloat cr, cg, cb;
+                if (intensity < 0.30) {
+                    cr = 0.04; cg = 0.14 + intensity * 0.6; cb = 0.28 + intensity * 1.1;
+                } else if (intensity < 0.60) {
+                    double t = (intensity - 0.30) / 0.30;
+                    cr = 0.10 + t * 0.75; cg = 0.32 + t * 0.22; cb = 0.68 - t * 0.45;
+                } else if (intensity < 0.85) {
+                    double t = (intensity - 0.60) / 0.25;
+                    cr = 0.88 + t * 0.12; cg = 0.48 + t * 0.38; cb = 0.12;
+                } else {
+                    cr = 1.00; cg = 0.88 + std::min(0.12, (intensity - 0.85) * 0.4); cb = 0.42;
+                }
+
+                [[NSColor colorWithCalibratedRed:cr green:cg blue:cb alpha:0.95] setFill];
+                double u = (double)c / trapCols;
+                CGFloat x0 = rowL0 + u * rowW;
+                CGFloat cw = (rowW / trapCols) + 0.9;
+                NSRectFill(NSMakeRect(x0, y0, cw, y1 - y0));
             }
-
-            [[NSColor colorWithCalibratedRed:cr green:cg blue:cb alpha:0.96] setFill];
-            CGFloat x0 = rowL0 + u * rowW;
-            CGFloat cw = (rowW / trapCols) + 0.9;
-            NSRectFill(NSMakeRect(x0, y0, cw, y1 - y0));
         }
     }
     CGContextRestoreGState(ctx);
@@ -971,7 +975,7 @@ static void drawSlatePanel(CGContextRef ctx, NSRect r, const vsrm::AuraLiveTheme
     }
 
     // -------------------------------------------------------------------------
-    // TIER 3 CENTER-RIGHT: Dual-Layer Mastering Waveform & Phase Correlation Monitor
+    // TIER 3 CENTER-RIGHT: Real-Time Waveform & Phase Correlation Monitor
     // -------------------------------------------------------------------------
     NSRect phWell = NSMakeRect(850, 334, 192, 132);
     [[NSColor colorWithCalibratedRed:th.wellR green:th.wellG blue:th.wellB alpha:1.0] setFill];
@@ -996,47 +1000,41 @@ static void drawSlatePanel(CGContextRef ctx, NSRect r, const vsrm::AuraLiveTheme
     CGContextAddLineToPoint(ctx, NSMaxX(phPlot), phMidY);
     CGContextStrokePath(ctx);
 
-    // Dual-layer scrolling loudness waveform (Cyan peak envelope over Electric Violet RMS body)
-    NSBezierPath* cyanPeakEnv = [NSBezierPath bezierPath];
-    NSBezierPath* violRmsBody = [NSBezierPath bezierPath];
-    [cyanPeakEnv moveToPoint:NSMakePoint(phPlot.origin.x, phMidY)];
-    [violRmsBody moveToPoint:NSMakePoint(phPlot.origin.x, phMidY)];
-    for (int x = 0; x <= (int)phPlot.size.width; x += 2) {
-        double env = (14.0 + maxGain * 18.0) * (0.65 + 0.35 * std::sin(x * 0.14 - _animPhase * 3.0))
-                   + 6.0 * std::cos(x * 0.45 - _animPhase * 4.5);
-        double rms = env * 0.62;
-        [cyanPeakEnv lineToPoint:NSMakePoint(phPlot.origin.x + x, phMidY - env)];
-        [violRmsBody lineToPoint:NSMakePoint(phPlot.origin.x + x, phMidY - rms)];
-    }
-    for (int x = (int)phPlot.size.width; x >= 0; x -= 2) {
-        double env = (14.0 + maxGain * 18.0) * (0.65 + 0.35 * std::sin(x * 0.14 - _animPhase * 3.0))
-                   + 6.0 * std::cos(x * 0.45 - _animPhase * 4.5);
-        double rms = env * 0.62;
-        [cyanPeakEnv lineToPoint:NSMakePoint(phPlot.origin.x + x, phMidY + env)];
-        [violRmsBody lineToPoint:NSMakePoint(phPlot.origin.x + x, phMidY + rms)];
-    }
-    [cyanPeakEnv closePath];
-    [violRmsBody closePath];
-    [[NSColor colorWithCalibratedRed:th.cyanR green:th.cyanG blue:th.cyanB alpha:0.28] setFill];
-    [cyanPeakEnv fill];
-    [[NSColor colorWithCalibratedRed:th.cyanR green:th.cyanG blue:th.cyanB alpha:0.88] setStroke];
-    [cyanPeakEnv setLineWidth:1.0];
-    [cyanPeakEnv stroke];
-    [[NSColor colorWithCalibratedRed:th.violetR green:th.violetG blue:th.violetB alpha:0.55] setFill];
-    [violRmsBody fill];
+    if (_engine) {
+        const auto& pkHist = _engine->getWavePeakHistory();
+        const auto& rmHist = _engine->getWaveRmsHistory();
+        int gw = _engine->getGRWriteIdx();
 
-    // Phase Correlation Teal/Amber Lobe Overlay
-    NSBezierPath* posLobe = [NSBezierPath bezierPath];
-    [posLobe moveToPoint:NSMakePoint(phPlot.origin.x, phMidY)];
-    for (int x = 0; x <= 96; x += 2) {
-        double nf = x / 96.0;
-        double h = (18.0 + widthNorm * 14.0 + 4.0 * std::sin(_animPhase * 2.4)) * std::exp(-std::pow((nf - 0.72) / 0.22, 2.0));
-        [posLobe lineToPoint:NSMakePoint(phPlot.origin.x + x, phMidY - h)];
+        NSBezierPath* cyanPeakEnv = [NSBezierPath bezierPath];
+        NSBezierPath* violRmsBody = [NSBezierPath bezierPath];
+        [cyanPeakEnv moveToPoint:NSMakePoint(phPlot.origin.x, phMidY)];
+        [violRmsBody moveToPoint:NSMakePoint(phPlot.origin.x, phMidY)];
+        for (int idx = 0; idx < 128; ++idx) {
+            int hIdx = (gw + idx) & 127;
+            CGFloat x = phPlot.origin.x + (idx / 127.0) * phPlot.size.width;
+            CGFloat pkH = std::min(42.0, (double)pkHist[hIdx] * 44.0);
+            CGFloat rmH = std::min(40.0, (double)rmHist[hIdx] * 44.0);
+            [cyanPeakEnv lineToPoint:NSMakePoint(x, phMidY - pkH)];
+            [violRmsBody lineToPoint:NSMakePoint(x, phMidY - rmH)];
+        }
+        for (int idx = 127; idx >= 0; --idx) {
+            int hIdx = (gw + idx) & 127;
+            CGFloat x = phPlot.origin.x + (idx / 127.0) * phPlot.size.width;
+            CGFloat pkH = std::min(42.0, (double)pkHist[hIdx] * 44.0);
+            CGFloat rmH = std::min(40.0, (double)rmHist[hIdx] * 44.0);
+            [cyanPeakEnv lineToPoint:NSMakePoint(x, phMidY + pkH)];
+            [violRmsBody lineToPoint:NSMakePoint(x, phMidY + rmH)];
+        }
+        [cyanPeakEnv closePath];
+        [violRmsBody closePath];
+        [[NSColor colorWithCalibratedRed:th.cyanR green:th.cyanG blue:th.cyanB alpha:0.28] setFill];
+        [cyanPeakEnv fill];
+        [[NSColor colorWithCalibratedRed:th.cyanR green:th.cyanG blue:th.cyanB alpha:0.88] setStroke];
+        [cyanPeakEnv setLineWidth:1.0];
+        [cyanPeakEnv stroke];
+        [[NSColor colorWithCalibratedRed:th.violetR green:th.violetG blue:th.violetB alpha:0.55] setFill];
+        [violRmsBody fill];
     }
-    [posLobe lineToPoint:NSMakePoint(phPlot.origin.x + 96, phMidY)];
-    [posLobe closePath];
-    [[NSColor colorWithCalibratedRed:0.22 green:0.86 blue:0.78 alpha:0.55] setFill];
-    [posLobe fill];
     CGContextRestoreGState(ctx);
 
     NSString* phTicks[5] = {@"-90", @"-03", @"0", @"+03", @"+90"};
@@ -1045,7 +1043,7 @@ static void drawSlatePanel(CGContextRef ctx, NSRect r, const vsrm::AuraLiveTheme
     }
 
     // -------------------------------------------------------------------------
-    // TIER 3 FAR-RIGHT: Live Polar Goniometer / Vectorscope Suite (x=1058..1270)
+    // TIER 3 FAR-RIGHT: Polar Goniometer / Vectorscope (Driven by Real Audio!)
     // -------------------------------------------------------------------------
     NSRect gonWell = NSMakeRect(1066, 334, 196, 132);
     [[NSColor colorWithCalibratedRed:th.wellR green:th.wellG blue:th.wellB alpha:1.0] setFill];
@@ -1071,53 +1069,22 @@ static void drawSlatePanel(CGContextRef ctx, NSRect r, const vsrm::AuraLiveTheme
     }
     CGContextStrokePath(ctx);
 
-    // Live Cyan Plasma Lissajous Vector Trace + Dot Cloud
-    double spreadScale = 0.6 + widthNorm * 0.7;
-    NSBezierPath* lissPath = [NSBezierPath bezierPath];
-    for (int p = 0; p < 64; ++p) {
-        double rel = std::sin(p * 0.32 + _animPhase * 2.8) * 0.45;
-        double ang = 1.5 * M_PI + rel * spreadScale * 0.58 * M_PI;
-        double dist = (16.0 + (p * 29 % 58)) * (0.85 + 0.15 * std::sin(_animPhase * 2.5 + p));
-        CGFloat px = gcx + std::cos(ang) * dist;
-        CGFloat py = gcy + std::sin(ang) * dist;
-        if (p == 0) [lissPath moveToPoint:NSMakePoint(px, py)];
-        else [lissPath lineToPoint:NSMakePoint(px, py)];
-        CGContextSetRGBFillColor(ctx, th.cyanR, th.cyanG, th.cyanB, 0.48);
-        CGContextFillEllipseInRect(ctx, CGRectMake(px - 1.3, py - 1.3, 2.6, 2.6));
-    }
-    [[NSColor colorWithCalibratedRed:th.cyanR green:th.cyanG blue:th.cyanB alpha:0.35] setStroke];
-    [lissPath setLineWidth:1.0];
-    [lissPath stroke];
-
-    struct VecArrow { double baseOffsetDeg; double len; CGFloat r, g, b; };
-    VecArrow arrows[4] = {
-        {-58.0 * spreadScale, 58.0, th.amberR, th.amberG, th.amberB},
-        {-32.0 * spreadScale, 70.0, th.cyanR,  th.cyanG,  th.cyanB},
-        {+35.0 * spreadScale, 66.0, th.blueR,  th.blueG,  th.blueB},
-        {+62.0 * spreadScale, 54.0, th.amberR, th.amberG, th.amberB}
-    };
-    for (int i = 0; i < 4; ++i) {
-        double deg = 270.0 + arrows[i].baseOffsetDeg + 4.0 * std::sin(_animPhase * 2.3 + i * 1.4);
-        double rad = std::clamp(deg, 190.0, 350.0) * M_PI / 180.0;
-        CGFloat ex = gcx + std::cos(rad) * arrows[i].len;
-        CGFloat ey = gcy + std::sin(rad) * arrows[i].len;
-        CGContextSetRGBStrokeColor(ctx, arrows[i].r, arrows[i].g, arrows[i].b, 0.95);
-        CGContextSetLineWidth(ctx, 1.6);
-        CGContextMoveToPoint(ctx, gcx, gcy);
-        CGContextAddLineToPoint(ctx, ex, ey);
-        CGContextStrokePath(ctx);
-
-        CGFloat ah1x = ex - std::cos(rad - 0.35) * 6.5;
-        CGFloat ah1y = ey - std::sin(rad - 0.35) * 6.5;
-        CGFloat ah2x = ex - std::cos(rad + 0.35) * 6.5;
-        CGFloat ah2y = ey - std::sin(rad + 0.35) * 6.5;
-        CGContextSetRGBFillColor(ctx, arrows[i].r, arrows[i].g, arrows[i].b, 0.98);
-        CGContextBeginPath(ctx);
-        CGContextMoveToPoint(ctx, ex, ey);
-        CGContextAddLineToPoint(ctx, ah1x, ah1y);
-        CGContextAddLineToPoint(ctx, ah2x, ah2y);
-        CGContextClosePath(ctx);
-        CGContextFillPath(ctx);
+    if (_engine && hasSignal) {
+        const auto& vx = _engine->getVecX();
+        const auto& vy = _engine->getVecY();
+        NSBezierPath* lissPath = [NSBezierPath bezierPath];
+        bool started = false;
+        for (int p = 0; p < vsrm::VSRMasterEngine::kScopeSize; p += 2) {
+            CGFloat px = gcx + std::clamp((double)vx[p] * gRad * 1.2, -gRad + 4.0, gRad - 4.0);
+            CGFloat py = gcy - std::clamp(std::fabs((double)vy[p]) * gRad * 1.1, 0.0, gRad - 4.0);
+            if (!started) { [lissPath moveToPoint:NSMakePoint(px, py)]; started = true; }
+            else [lissPath lineToPoint:NSMakePoint(px, py)];
+            CGContextSetRGBFillColor(ctx, th.cyanR, th.cyanG, th.cyanB, 0.55);
+            CGContextFillEllipseInRect(ctx, CGRectMake(px - 1.3, py - 1.3, 2.6, 2.6));
+        }
+        [[NSColor colorWithCalibratedRed:th.cyanR green:th.cyanG blue:th.cyanB alpha:0.40] setStroke];
+        [lissPath setLineWidth:1.0];
+        [lissPath stroke];
     }
     CGContextRestoreGState(ctx);
 
@@ -1143,7 +1110,6 @@ static void drawSlatePanel(CGContextRef ctx, NSRect r, const vsrm::AuraLiveTheme
         NSRect mr = NSMakeRect(mx, rackY, modW, modH);
         drawSlatePanel(ctx, mr, th, true);
 
-        // Top-left power/bypass LED and top-right solo LED per spec
         NSColor* bypCol = _modBypass[m]
             ? [NSColor colorWithCalibratedRed:0.35 green:0.38 blue:0.44 alpha:0.8]
             : [NSColor colorWithCalibratedRed:th.cyanR green:th.cyanG blue:th.cyanB alpha:0.98];
@@ -1179,17 +1145,21 @@ static void drawSlatePanel(CGContextRef ctx, NSRect r, const vsrm::AuraLiveTheme
 
     CGContextSaveGState(ctx);
     CGContextClipToRect(ctx, NSRectToCGRect(m1Well));
-    NSBezierPath* m1FFT = [NSBezierPath bezierPath];
-    [m1FFT moveToPoint:NSMakePoint(m1Well.origin.x, NSMaxY(m1Well) - 12)];
-    for (int x = 0; x <= (int)m1Well.size.width; x += 3) {
-        double nf = (double)x / m1Well.size.width;
-        double h = (20.0 + gainNorm * 18.0) * std::sin(nf * 3.14) + 6.0 * std::sin(x * 0.4 + _animPhase * 2.4);
-        [m1FFT lineToPoint:NSMakePoint(m1Well.origin.x + x, NSMaxY(m1Well) - 12 - std::max(3.0, h))];
+    if (_engine && hasSignal) {
+        const auto& spec = _engine->getSpecMag();
+        NSBezierPath* m1FFT = [NSBezierPath bezierPath];
+        [m1FFT moveToPoint:NSMakePoint(m1Well.origin.x, NSMaxY(m1Well) - 12)];
+        for (int x = 0; x <= (int)m1Well.size.width; x += 3) {
+            double nf = (double)x / m1Well.size.width;
+            int b = std::clamp((int)(nf * (vsrm::VSRMasterEngine::kSpecBands - 1)), 0, vsrm::VSRMasterEngine::kSpecBands - 1);
+            double h = spec[b] * 48.0;
+            [m1FFT lineToPoint:NSMakePoint(m1Well.origin.x + x, NSMaxY(m1Well) - 12 - h)];
+        }
+        [m1FFT lineToPoint:NSMakePoint(NSMaxX(m1Well), NSMaxY(m1Well) - 12)];
+        [m1FFT closePath];
+        [[NSColor colorWithCalibratedRed:th.blueR green:th.blueG blue:th.blueB alpha:0.38] setFill];
+        [m1FFT fill];
     }
-    [m1FFT lineToPoint:NSMakePoint(NSMaxX(m1Well), NSMaxY(m1Well) - 12)];
-    [m1FFT closePath];
-    [[NSColor colorWithCalibratedRed:th.blueR green:th.blueG blue:th.blueB alpha:0.38] setFill];
-    [m1FFT fill];
 
     NSBezierPath* m1Viol = [NSBezierPath bezierPath];
     NSBezierPath* m1Cyan = [NSBezierPath bezierPath];
@@ -1212,7 +1182,7 @@ static void drawSlatePanel(CGContextRef ctx, NSRect r, const vsrm::AuraLiveTheme
     CGContextRestoreGState(ctx);
 
     // -------------------------------------------------------------------------
-    // MODULE 2 INTERNAL DISPLAY: AIR & SPACE Real-Time 2D Spatial Diffusion Cloud
+    // MODULE 2 INTERNAL DISPLAY: AIR & SPACE 2D Spatial Diffusion Cloud
     // -------------------------------------------------------------------------
     CGFloat m2x = m1x + modW + gap;
     NSRect airWell = NSMakeRect(m2x + 102, rackY + 130, 132, 68);
@@ -1231,23 +1201,25 @@ static void drawSlatePanel(CGContextRef ctx, NSRect r, const vsrm::AuraLiveTheme
         [[NSColor colorWithCalibratedRed:(ring % 2 ? th.cyanR : th.violetR)
                                    green:(ring % 2 ? th.cyanG : th.violetG)
                                     blue:(ring % 2 ? th.cyanB : th.violetB)
-                                   alpha:(0.24 - ring * 0.05)] setFill];
+                                   alpha:(0.22 - ring * 0.05)] setFill];
         [halo fill];
-        [[NSColor colorWithCalibratedRed:th.cyanR green:th.cyanG blue:th.cyanB alpha:0.45] setStroke];
+        [[NSColor colorWithCalibratedRed:th.cyanR green:th.cyanG blue:th.cyanB alpha:0.40] setStroke];
         [halo setLineWidth:0.8];
         [halo stroke];
     }
-    for (int p = 0; p < 28; ++p) {
-        double ang = p * 0.45 + _animPhase * 1.8;
-        double radX = (8.0 + (p % 7) * 6.5) * (0.6 + airNorm * 0.7);
-        double radY = (5.0 + (p % 5) * 4.5) * (0.6 + spaceNorm * 0.7);
-        CGFloat px = acx + std::cos(ang) * radX;
-        CGFloat py = acy + std::sin(ang * 1.3) * radY;
-        [[NSColor colorWithCalibratedRed:(p % 2 ? th.cyanR : th.violetR)
-                                   green:(p % 2 ? th.cyanG : th.violetG)
-                                    blue:(p % 2 ? th.cyanB : th.violetB)
-                                   alpha:0.82] setFill];
-        [[NSBezierPath bezierPathWithOvalInRect:NSMakeRect(px - 1.6, py - 1.6, 3.2, 3.2)] fill];
+    if (hasSignal) {
+        for (int p = 0; p < 24; ++p) {
+            double ang = p * 0.45 + _animPhase * 1.8;
+            double radX = (8.0 + (p % 7) * 6.5) * (0.6 + airNorm * 0.7) * std::min(1.2f, outPeakLin * 1.5f);
+            double radY = (5.0 + (p % 5) * 4.5) * (0.6 + spaceNorm * 0.7) * std::min(1.2f, outPeakLin * 1.5f);
+            CGFloat px = acx + std::cos(ang) * radX;
+            CGFloat py = acy + std::sin(ang * 1.3) * radY;
+            [[NSColor colorWithCalibratedRed:(p % 2 ? th.cyanR : th.violetR)
+                                       green:(p % 2 ? th.cyanG : th.violetG)
+                                        blue:(p % 2 ? th.cyanB : th.violetB)
+                                       alpha:0.82] setFill];
+            [[NSBezierPath bezierPathWithOvalInRect:NSMakeRect(px - 1.6, py - 1.6, 3.2, 3.2)] fill];
+        }
     }
     [@"AIR CLOUD" drawAtPoint:NSMakePoint(airWell.origin.x + 6, airWell.origin.y + 3) withAttributes:tinyAxisFont];
     CGContextRestoreGState(ctx);
@@ -1264,7 +1236,7 @@ static void drawSlatePanel(CGContextRef ctx, NSRect r, const vsrm::AuraLiveTheme
 
     CGContextSaveGState(ctx);
     CGContextClipToRect(ctx, NSRectToCGRect(m3Well));
-    int bandRoles[4] = {2, 1, 4, 3}; // Blue, Cyan, Amber, Violet
+    int bandRoles[4] = {2, 1, 4, 3};
     NSString* bandLbls[4] = {@"Band 1", @"Band 2", @"Band 3", @"Band 4"};
     CGFloat bandBaseY = NSMaxY(m3Well) - 13.0;
     double bandHeights[4] = {
@@ -1305,7 +1277,6 @@ static void drawSlatePanel(CGContextRef ctx, NSRect r, const vsrm::AuraLiveTheme
     }
     CGContextRestoreGState(ctx);
 
-    // Draw Live Horizontal Sliders in Module 3
     for (size_t s = 0; s < _sliders.size(); ++s) {
         const auto& sw = _sliders[s];
         float norm = _engine ? _engine->getParameterNormalized(sw.paramId) : 0.5f;
@@ -1343,7 +1314,7 @@ static void drawSlatePanel(CGContextRef ctx, NSRect r, const vsrm::AuraLiveTheme
     }
 
     // -------------------------------------------------------------------------
-    // MODULE 4 INTERNAL DISPLAY: Live Dual Vertical Gain Reduction (GR) Meters
+    // MODULE 4 INTERNAL DISPLAY: Real-Time Dual Vertical Gain Reduction Meters
     // -------------------------------------------------------------------------
     CGFloat m4x = m3x + modW + gap;
     for (int ch = 0; ch < 2; ++ch) {
@@ -1353,21 +1324,19 @@ static void drawSlatePanel(CGContextRef ctx, NSRect r, const vsrm::AuraLiveTheme
         [[NSColor colorWithCalibratedRed:th.borderR green:th.borderG blue:th.borderB alpha:0.85] setStroke];
         NSFrameRect(gmWell);
 
-        double compActivity = (1.0 - compThr) * 84.0 + liveGR * 4.5 + 16.0 * std::fabs(std::sin(_animPhase * 2.8 + ch * 0.7));
-        CGFloat fillH = _compGRShow ? std::clamp(compActivity, 12.0, 116.0) : 8.0;
-        NSRect barR = NSMakeRect(gmWell.origin.x + 2, NSMaxY(gmWell) - fillH - 2, 9, fillH);
-        NSGradient* cGrad = [[NSGradient alloc] initWithStartingColor:[NSColor colorWithCalibratedRed:0.65 green:0.95 blue:1.0 alpha:1.0]
-                                                          endingColor:[NSColor colorWithCalibratedRed:0.12 green:0.58 blue:0.92 alpha:0.95]];
-        [cGrad drawInRect:barR angle:90.0];
-
-        [[NSColor colorWithCalibratedRed:th.amberR green:th.amberG blue:th.amberB alpha:0.95] setFill];
-        NSRectFill(NSMakeRect(gmWell.origin.x + 2, gmWell.origin.y + 14, 9, 4));
+        if (_compGRShow && liveGR > 0.05f) {
+            CGFloat fillH = std::clamp((double)liveGR * 10.5, 2.0, 124.0);
+            NSRect barR = NSMakeRect(gmWell.origin.x + 2, NSMaxY(gmWell) - fillH - 2, 9, fillH);
+            NSGradient* cGrad = [[NSGradient alloc] initWithStartingColor:[NSColor colorWithCalibratedRed:0.65 green:0.95 blue:1.0 alpha:1.0]
+                                                              endingColor:[NSColor colorWithCalibratedRed:0.12 green:0.58 blue:0.92 alpha:0.95]];
+            [cGrad drawInRect:barR angle:90.0];
+        }
 
         [@"Gain" drawAtPoint:NSMakePoint(gmWell.origin.x - 4, NSMaxY(gmWell) + 2) withAttributes:tinyAxisFont];
     }
 
     // -------------------------------------------------------------------------
-    // MODULE 5 INTERNAL DISPLAY: Live Scrolling Maximizer Waveform Trace Box
+    // MODULE 5 INTERNAL DISPLAY: Real-Time Maximizer Waveform / GR Trace Box
     // -------------------------------------------------------------------------
     CGFloat m5x = m4x + modW + gap;
     NSRect m5Wave = NSMakeRect(m5x + 12, rackY + 138, 124, 58);
@@ -1378,30 +1347,32 @@ static void drawSlatePanel(CGContextRef ctx, NSRect r, const vsrm::AuraLiveTheme
 
     CGContextSaveGState(ctx);
     CGContextClipToRect(ctx, NSRectToCGRect(m5Wave));
-    NSBezierPath* limFill = [NSBezierPath bezierPath];
-    NSBezierPath* limLine = [NSBezierPath bezierPath];
-    [limFill moveToPoint:NSMakePoint(m5Wave.origin.x, NSMaxY(m5Wave))];
-    for (int x = 0; x <= (int)m5Wave.size.width; x += 2) {
-        double nf = (double)x / m5Wave.size.width;
-        double env = (16.0 + maxGain * 26.0) + 12.0 * std::sin(nf * 8.5 + _animPhase * 2.2);
-        double jag = 8.0 * std::sin(x * 0.55 - _animPhase * 3.8) + 5.0 * std::cos(x * 1.3 + _animPhase * 2.6);
-        double maxCeilH = 7.0 + (1.0 - ceilNorm) * 24.0;
-        CGFloat py = std::clamp(NSMaxY(m5Wave) - (env + jag), m5Wave.origin.y + maxCeilH, NSMaxY(m5Wave) - 3.0);
-        [limFill lineToPoint:NSMakePoint(m5Wave.origin.x + x, py)];
-        if (x == 0) [limLine moveToPoint:NSMakePoint(m5Wave.origin.x + x, py)];
-        else [limLine lineToPoint:NSMakePoint(m5Wave.origin.x + x, py)];
+    if (_engine) {
+        const auto& pkHist = _engine->getWavePeakHistory();
+        int gw = _engine->getGRWriteIdx();
+        NSBezierPath* limFill = [NSBezierPath bezierPath];
+        NSBezierPath* limLine = [NSBezierPath bezierPath];
+        [limFill moveToPoint:NSMakePoint(m5Wave.origin.x, NSMaxY(m5Wave))];
+        for (int idx = 0; idx < 128; ++idx) {
+            int hIdx = (gw + idx) & 127;
+            CGFloat x = m5Wave.origin.x + (idx / 127.0) * m5Wave.size.width;
+            double maxCeilH = 6.0 + (1.0 - ceilNorm) * 20.0;
+            CGFloat py = std::clamp(NSMaxY(m5Wave) - pkHist[hIdx] * 50.0, m5Wave.origin.y + maxCeilH, NSMaxY(m5Wave) - 1.0);
+            [limFill lineToPoint:NSMakePoint(x, py)];
+            if (idx == 0) [limLine moveToPoint:NSMakePoint(x, py)];
+            else [limLine lineToPoint:NSMakePoint(x, py)];
+        }
+        [limFill lineToPoint:NSMakePoint(NSMaxX(m5Wave), NSMaxY(m5Wave))];
+        [limFill closePath];
+        NSGradient* lwGrad = [[NSGradient alloc] initWithStartingColor:[NSColor colorWithCalibratedRed:0.56 green:0.46 blue:0.86 alpha:0.68]
+                                                           endingColor:[NSColor colorWithCalibratedRed:0.18 green:0.22 blue:0.42 alpha:0.20]];
+        [lwGrad drawInBezierPath:limFill angle:90.0];
+        [[NSColor colorWithCalibratedRed:0.88 green:0.92 blue:1.0 alpha:0.92] setStroke];
+        [limLine setLineWidth:1.1];
+        [limLine stroke];
     }
-    [limFill lineToPoint:NSMakePoint(NSMaxX(m5Wave), NSMaxY(m5Wave))];
-    [limFill closePath];
-    NSGradient* lwGrad = [[NSGradient alloc] initWithStartingColor:[NSColor colorWithCalibratedRed:0.56 green:0.46 blue:0.86 alpha:0.68]
-                                                       endingColor:[NSColor colorWithCalibratedRed:0.18 green:0.22 blue:0.42 alpha:0.20]];
-    [lwGrad drawInBezierPath:limFill angle:90.0];
-    [[NSColor colorWithCalibratedRed:0.88 green:0.92 blue:1.0 alpha:0.92] setStroke];
-    [limLine setLineWidth:1.1];
-    [limLine stroke];
     CGContextRestoreGState(ctx);
 
-    // Ceiling Link / Margin Readout inside Module 5
     float ceilDB = _engine ? _engine->getParameterValue(vsrm::kCeiling) : -0.1f;
     float maxDB  = _engine ? _engine->getParameterValue(vsrm::kMaximizerGain) : 4.6f;
     [[NSString stringWithFormat:@"Drive: +%.1fdB\nCeil: %.1fdBTP", maxDB, ceilDB] drawInRect:NSMakeRect(m5x + 140, rackY + 172, 98, 26) withAttributes:@{
@@ -1569,7 +1540,6 @@ static void drawSlatePanel(CGContextRef ctx, NSRect r, const vsrm::AuraLiveTheme
     [[self window] makeFirstResponder:self];
     NSPoint pt = [self logicalPointFromEvent:event];
 
-    // 0. Check Bottom-Right Resize Grip
     if (pt.x >= 1252.0 && pt.y >= 692.0) {
         _resizingCorner = true;
         _resizeStartScreenPt = [NSEvent mouseLocation];
@@ -1577,7 +1547,6 @@ static void drawSlatePanel(CGContextRef ctx, NSRect r, const vsrm::AuraLiveTheme
         return;
     }
 
-    // 0b. Check Top-Left Bypass & Top-Right Solo LEDs on the 5 Bottom Rack Modules
     const CGFloat rackY = 482.0, modW = 246.0, gap = 7.5;
     for (int m = 0; m < 5; ++m) {
         CGFloat mx = 10.0 + m * (modW + gap);
@@ -1593,7 +1562,6 @@ static void drawSlatePanel(CGContextRef ctx, NSRect r, const vsrm::AuraLiveTheme
         }
     }
 
-    // 1. Check Buttons first (including top-left EQ overlay toggles FFT / Phys / MID / SIDE)
     for (const auto& bw : _buttons) {
         if (NSPointInRect(pt, bw.rect)) {
             if (bw.paramId >= 0) {
@@ -1656,7 +1624,6 @@ static void drawSlatePanel(CGContextRef ctx, NSRect r, const vsrm::AuraLiveTheme
         }
     }
 
-    // 2. Check Rotary Knobs (including top-right Slope knob inside EQ and M/S Bal knob)
     for (size_t i = 0; i < _knobs.size(); ++i) {
         if (std::hypot(pt.x - _knobs[i].cx, pt.y - _knobs[i].cy) <= _knobs[i].radius + 8.0) {
             int pid = _knobs[i].paramId;
@@ -1677,7 +1644,6 @@ static void drawSlatePanel(CGContextRef ctx, NSRect r, const vsrm::AuraLiveTheme
         }
     }
 
-    // 3. Check Interactive EQ Nodes (Draggable in both X and Y!)
     NSRect plotRect = NSMakeRect(42, 64, 704, 224);
     if (NSPointInRect(pt, plotRect)) {
         for (size_t i = 0; i < _eqNodes.size(); ++i) {
@@ -1692,7 +1658,6 @@ static void drawSlatePanel(CGContextRef ctx, NSRect r, const vsrm::AuraLiveTheme
         }
     }
 
-    // 4. Check 4-Band Stereo Imaging Nodes inside Module 3 Display
     CGFloat m3x = 10.0 + 2 * (modW + gap);
     NSRect m3Well = NSMakeRect(m3x + 12, rackY + 52, 222, 58);
     if (NSPointInRect(pt, m3Well)) {
@@ -1705,7 +1670,6 @@ static void drawSlatePanel(CGContextRef ctx, NSRect r, const vsrm::AuraLiveTheme
         }
     }
 
-    // 5. Check Horizontal Sliders in Module 3
     for (size_t s = 0; s < _sliders.size(); ++s) {
         if (NSPointInRect(pt, NSInsetRect(_sliders[s].trackRect, -8, -6))) {
             _dragSliderIdx = static_cast<int>(s);
@@ -1719,7 +1683,6 @@ static void drawSlatePanel(CGContextRef ctx, NSRect r, const vsrm::AuraLiveTheme
         }
     }
 
-    // 6. Check Sidechain Toggle Switch Pill
     if (NSPointInRect(pt, NSMakeRect(872, 8, 44, 26))) {
         _sidechainOn = !_sidechainOn;
         [self setNeedsDisplay:YES];
@@ -1804,7 +1767,6 @@ static void drawSlatePanel(CGContextRef ctx, NSRect r, const vsrm::AuraLiveTheme
     [self setNeedsDisplay:YES];
 }
 
-// Support Mouse Scroll-Wheel over any Knob or Slider!
 - (void)scrollWheel:(NSEvent*)event {
     if (!_engine) return;
     NSPoint pt = [self logicalPointFromEvent:event];
@@ -1843,9 +1805,6 @@ static void drawSlatePanel(CGContextRef ctx, NSRect r, const vsrm::AuraLiveTheme
         [self setNeedsDisplay:YES];
     } else if (c >= '1' && c <= '8') {
         _engine->loadPreset(c - '1');
-        [self setNeedsDisplay:YES];
-    } else if (c == ' ') {
-        _engine->setDemoLoopPlaying(!_engine->isDemoLoopPlaying());
         [self setNeedsDisplay:YES];
     }
 }
